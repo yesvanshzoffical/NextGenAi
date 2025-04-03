@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bilingual Voice Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #ffffff;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #6200ea;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: background 0.3s ease-in-out;
+    }
+    button:hover {
+      background: #3700b3;
+    }
+    select {
+      padding: 10px;
+      font-size: 16px;
+      margin-left: 10px;
+      border-radius: 5px;
+      background: #1e1e1e;
+      color: white;
+      border: none;
+    }
+    .activity-container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 15px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      text-align: left;
+      overflow-y: auto;
+      max-height: 300px;
+    }
+    .activity {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .user {
+      background: #007bff;
+      text-align: right;
+      color: white;
+    }
+    .bot {
+      background: #ff5722;
+      text-align: left;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Bilingual Voice Assistant Made By YesVanshz</h1>
+  <button id="micButton" onclick="startListening()">🎤 Speak</button>
+  <select id="language">
+    <option value="en">English</option>
+    <option value="hi">Hindi</option>
+  </select>
+  <div class="activity-container" id="activity-container">
+    <!-- Activity log will appear here -->
+  </div>
+  <script>
+    let recognition; // Define recognition globally
+
+    function startListening() {
+      if (!recognition) {
+        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = document.getElementById("language").value === "hi" ? "hi-IN" : "en-US";
+
+        recognition.onresult = function (event) {
+          let userText = event.results[0][0].transcript;
+          addActivity(userText, "user");
+          sendToServer(userText);
+        };
+
+        recognition.onend = function () {
+          document.getElementById("micButton").innerText = "🎤 Speak"; // Update button when mic turns off
+        };
+      }
+
+      document.getElementById("micButton").innerText = "🎙️ Listening...";
+      recognition.start();
+    }
+
+    function sendToServer(userText) {
+      let language = document.getElementById("language").value;
+      
+      fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: userText, language: language }),
+      })
+      .then(response => response.json())
+      .then(data => {
+        addActivity(data.response, "bot");
+        speakResponse(data.response);
+      });
+    }
+
+    function speakResponse(text) {
+      let msg = new SpeechSynthesisUtterance(text);
+      msg.lang = document.getElementById("language").value === "hi" ? "hi-IN" : "en-US";
+      
+      msg.onstart = function () {
+        document.getElementById("micButton").innerText = "🔇 Speaking...";
+      };
+
+      msg.onend = function () {
+        document.getElementById("micButton").innerText = "🎤 Speak"; // Reset button
+        startListening(); // Restart listening after response is spoken
+      };
+
+      window.speechSynthesis.speak(msg);
+    }
+
+    function addActivity(text, type) {
+      let activityContainer = document.getElementById("activity-container");
+      let activity = document.createElement("div");
+      activity.classList.add("activity", type);
+      activity.innerText = (type === "user" ? "🧑‍💻 You: " : "🤖 Bot: ") + text;
+      activityContainer.appendChild(activity);
+      activityContainer.scrollTop = activityContainer.scrollHeight;
+    }
+  </script>
+</body>
+</html>
